@@ -96,11 +96,8 @@ while True:
 		print(line)
 		sline = line.decode().split(",")
 		if sline[0] == "a":
-			xvel = float(sline[1])
-			yvel = float(sline[2])
-			# should have done this in K66F before sending,
-			# did not realise until now
-			vel = math.sqrt(pow(xvel, 2) + pow(yvel, 2))
+			vel = float(sline[1])
+			#vel = math.sqrt(pow(xvel, 2) + pow(yvel, 2))
 			mqttc.publish(topic, vel)
 	
 	mqttc.loop()

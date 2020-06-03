@@ -31,7 +31,7 @@ uint8_t who_am_i, data[2], res[6];
 int16_t acc16;
 float t[3];
 
-float velbuf[256][2];
+float velbuf[256];
 int veln = 0;
 
 EventQueue queue(32 * EVENTS_EVENT_SIZE);
@@ -53,7 +53,7 @@ RPCFunction rpcReadBuf(&readBuf, "readBuf");
 void readBuf(Arguments *in, Reply *out) {
 	xbee.printf("%03d\n", veln);
 	for(int i = 0; i < veln; i++) {
-		xbee.printf("a,%1.4f,%1.4f\n", velbuf[i][0], velbuf[i][1]);
+		xbee.printf("a,%1.4f\n", velbuf[i]);
 		wait(0.01);
 	}
 	veln = 0;
@@ -86,8 +86,7 @@ void getAcc() {
 
 	if(veln > 255) veln = 255;
 
-	velbuf[veln][0] = t[0] * 9.8 * 0.1;
-	velbuf[veln][1] = t[1] * 9.8 * 0.1;
+	velbuf[veln] = sqrt(pow(t[0] * 9.8 * 0.1, 2) + pow(t[1] * 9.8 * 0.1, 2));
 	veln++;
 }
 
