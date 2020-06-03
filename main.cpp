@@ -50,9 +50,10 @@ void getAcc();
 void readBuf(Arguments *in, Reply *out);
 RPCFunction rpcReadBuf(&readBuf, "readBuf");
 
-void readBuf (Arguments *in, Reply *out) {
+void readBuf(Arguments *in, Reply *out) {
 	for(int i = 0; i < veln; i++) {
-		pc.printf("X: %1.4f  Y: %1.4f\r\n", velbuf[i][0], velbuf[i][1]);
+		pc.printf("a,%1.4f,%1.4f\n", velbuf[i][0], velbuf[i][1]);
+		wait(0.05);
 	}
 	veln = 0;
 }
