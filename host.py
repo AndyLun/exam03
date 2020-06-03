@@ -97,7 +97,6 @@ while True:
 		sline = line.decode().split(",")
 		if sline[0] == "a":
 			vel = float(sline[1])
-			#vel = math.sqrt(pow(xvel, 2) + pow(yvel, 2))
 			mqttc.publish(topic, vel)
 	
 	mqttc.loop()
