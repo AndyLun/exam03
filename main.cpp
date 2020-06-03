@@ -52,7 +52,7 @@ RPCFunction rpcReadBuf(&readBuf, "readBuf");
 
 void readBuf(Arguments *in, Reply *out) {
 	for(int i = 0; i < veln; i++) {
-		pc.printf("a,%1.4f,%1.4f\n", velbuf[i][0], velbuf[i][1]);
+		xbee.printf("a,%1.4f,%1.4f\n", velbuf[i][0], velbuf[i][1]);
 		wait(0.05);
 	}
 	veln = 0;
