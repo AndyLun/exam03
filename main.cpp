@@ -29,6 +29,9 @@ uint8_t who_am_i, data[2], res[6];
 int16_t acc16;
 float t[3];
 
+float velbuf[256][2];
+int veln = 0;
+
 EventQueue queue(32 * EVENTS_EVENT_SIZE);
 Thread th;
 
@@ -54,10 +57,22 @@ void getAcc() {
 		acc16 -= UINT14_MAX;
 	t[2] = ((float)acc16) / 4096.0f;
 
+	/*
 	printf("FXOS8700Q ACC: X=%1.4f(%x%x) Y=%1.4f(%x%x) Z=%1.4f(%x%x)\r\n",
 		   t[0], res[0], res[1],
 		   t[1], res[2], res[3],
 		   t[2], res[4], res[5]);
+	*/
+
+	velbuf[veln][0] = t[0] * 9.8 * 0.1;
+	velbuf[veln][1] = t[1] * 9.8 * 0.1;
+	veln++;
+
+	if(veln == 50) {
+		for(int i = 0; i < veln; i++) {
+			printf("X: %1.4f  Y: %1.4f\r\n", velbuf[i][0], velbuf[i][1]);
+		}
+	}
 }
 
 int main() {
