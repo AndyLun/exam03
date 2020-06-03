@@ -1,6 +1,7 @@
 #include "mbed.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
+#include "mbed_rpc.h"
 #define UINT14_MAX 16383
 // FXOS8700CQ I2C address
 #define FXOS8700CQ_SLAVE_ADDR0 (0x1E << 1) // with pins SA0=0, SA1=0
@@ -24,6 +25,7 @@
 
 I2C i2c(PTD9, PTD8);
 Serial pc(USBTX, USBRX);
+RawSerial xbee(D12, D11);
 int m_addr = FXOS8700CQ_SLAVE_ADDR1;
 uint8_t who_am_i, data[2], res[6];
 int16_t acc16;
@@ -33,11 +35,27 @@ float velbuf[256][2];
 int veln = 0;
 
 EventQueue queue(32 * EVENTS_EVENT_SIZE);
+EventQueue queue_xbee(32 * EVENTS_EVENT_SIZE);
 Thread th;
+Thread th_xbee;
 
+void xbee_rx_interrupt(void);
+void xbee_rx(void);
+void reply_messange(char *xbee_reply, char *messange);
+void check_addr(char *xbee_reply, char *messenger);
 void FXOS8700CQ_readRegs(int addr, uint8_t *data, int len);
 void FXOS8700CQ_writeRegs(uint8_t *data, int len);
 void getAcc();
+
+void readBuf(Arguments *in, Reply *out);
+RPCFunction rpcReadBuf(&readBuf, "readBuf");
+
+void readBuf (Arguments *in, Reply *out) {
+	for(int i = 0; i < veln; i++) {
+		pc.printf("X: %1.4f  Y: %1.4f\r\n", velbuf[i][0], velbuf[i][1]);
+	}
+	veln = 0;
+}
 
 void getAcc() {
 	FXOS8700CQ_readRegs(FXOS8700Q_OUT_X_MSB, res, 6);
@@ -64,15 +82,11 @@ void getAcc() {
 		   t[2], res[4], res[5]);
 	*/
 
+	if(veln > 255) veln = 255;
+
 	velbuf[veln][0] = t[0] * 9.8 * 0.1;
 	velbuf[veln][1] = t[1] * 9.8 * 0.1;
 	veln++;
-
-	if(veln == 50) {
-		for(int i = 0; i < veln; i++) {
-			printf("X: %1.4f  Y: %1.4f\r\n", velbuf[i][0], velbuf[i][1]);
-		}
-	}
 }
 
 int main() {
@@ -92,10 +106,48 @@ int main() {
 	FXOS8700CQ_readRegs(FXOS8700Q_WHOAMI, &who_am_i, 1);
 
 	pc.printf("Here is %x\r\n", who_am_i);
-	while (true)
-	{
 
+	// XBee setting
+
+	char xbee_reply[4];
+	xbee.baud(9600);
+	xbee.printf("+++");
+	xbee_reply[0] = xbee.getc();
+	xbee_reply[1] = xbee.getc();
+	if (xbee_reply[0] == 'O' && xbee_reply[1] == 'K')
+	{
+		pc.printf("enter AT mode.\r\n");
+		xbee_reply[0] = '\0';
+		xbee_reply[1] = '\0';
 	}
+	xbee.printf("ATMY 0x670\r\n");
+	reply_messange(xbee_reply, "setting MY : 0x670");
+
+	xbee.printf("ATDL 0x770\r\n");
+	reply_messange(xbee_reply, "setting DL : 0x770");
+
+	xbee.printf("ATID 0x17\r\n");
+	reply_messange(xbee_reply, "setting PAN ID : 0x17");
+
+	xbee.printf("ATWR\r\n");
+	reply_messange(xbee_reply, "write config");
+
+	xbee.printf("ATMY\r\n");
+	check_addr(xbee_reply, "MY");
+
+	xbee.printf("ATDL\r\n");
+	check_addr(xbee_reply, "DL");
+
+	xbee.printf("ATCN\r\n");
+	reply_messange(xbee_reply, "exit AT mode");
+	xbee.getc();
+
+	// start
+	pc.printf("start\r\n");
+	th_xbee.start(callback(&queue_xbee, &EventQueue::dispatch_forever));
+
+	// Setup a serial interrupt function of receiving data from xbee
+	xbee.attach(xbee_rx_interrupt, Serial::RxIrq);
 }
 
 void FXOS8700CQ_readRegs(int addr, uint8_t *data, int len)
@@ -108,4 +160,59 @@ void FXOS8700CQ_readRegs(int addr, uint8_t *data, int len)
 void FXOS8700CQ_writeRegs(uint8_t *data, int len)
 {
 	i2c.write(m_addr, (char *)data, len);
+}
+
+void xbee_rx_interrupt(void)
+{
+	xbee.attach(NULL, Serial::RxIrq); // detach interrupt
+	queue_xbee.call(&xbee_rx);
+}
+
+void xbee_rx(void)
+{
+	char buf[100] = {0};
+	char outbuf[100] = {0};
+	while (xbee.readable())
+	{
+		for (int i = 0;; i++)
+		{
+			char recv = xbee.getc();
+			if (recv == '\r')
+			{
+				break;
+			}
+			buf[i] = pc.putc(recv);
+		}
+		RPC::call(buf, outbuf);
+		pc.printf("%s\r\n", outbuf);
+		wait(0.1);
+	}
+	xbee.attach(xbee_rx_interrupt, Serial::RxIrq); // reattach interrupt
+}
+
+void reply_messange(char *xbee_reply, char *messange)
+{
+	xbee_reply[0] = xbee.getc();
+	xbee_reply[1] = xbee.getc();
+	xbee_reply[2] = xbee.getc();
+	if (xbee_reply[1] == 'O' && xbee_reply[2] == 'K')
+	{
+		pc.printf("%s\r\n", messange);
+		xbee_reply[0] = '\0';
+		xbee_reply[1] = '\0';
+		xbee_reply[2] = '\0';
+	}
+}
+
+void check_addr(char *xbee_reply, char *messenger)
+{
+	xbee_reply[0] = xbee.getc();
+	xbee_reply[1] = xbee.getc();
+	xbee_reply[2] = xbee.getc();
+	xbee_reply[3] = xbee.getc();
+	pc.printf("%s = %c%c%c\r\n", messenger, xbee_reply[1], xbee_reply[2], xbee_reply[3]);
+	xbee_reply[0] = '\0';
+	xbee_reply[1] = '\0';
+	xbee_reply[2] = '\0';
+	xbee_reply[3] = '\0';
 }
