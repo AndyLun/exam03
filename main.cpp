@@ -54,7 +54,7 @@ void readBuf(Arguments *in, Reply *out) {
 	xbee.printf("%03d\n", veln);
 	for(int i = 0; i < veln; i++) {
 		xbee.printf("a,%1.4f,%1.4f\n", velbuf[i][0], velbuf[i][1]);
-		wait(0.05);
+		wait(0.01);
 	}
 	veln = 0;
 }

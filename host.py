@@ -53,16 +53,20 @@ while True:
 
 	char = s.read(4)
 	print(char.decode())
-	if len(char) == 4:
+
+	try:
 		veln = int(char)
-		
-		for i in range(0, veln):
-			line = s.readline()
-			print(line)
-			sline = line.decode().split(",")
-			if sline[0] == "a":
-				xvel = float(sline[1])
-				yvel = float(sline[2])
-				print(str(xvel) + " , " + str(yvel))
+	except ValueError:
+		print("Error!")
+		veln = 0
+
+	for i in range(0, veln):
+		line = s.readline()
+		print(line)
+		sline = line.decode().split(",")
+		if sline[0] == "a":
+			xvel = float(sline[1])
+			yvel = float(sline[2])
+			print(str(xvel) + " , " + str(yvel))
 	
 	time.sleep(1)
