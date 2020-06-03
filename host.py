@@ -47,4 +47,6 @@ print(char.decode())
 
 print("start sending RPC")
 
-s.write("/readBuf/run\r".encode())
+while True:
+	s.write("/readBuf/run\r".encode())
+	time.sleep(1)
