@@ -50,12 +50,19 @@ print("start sending RPC")
 while True:
 	s.flushInput()
 	s.write("/readBuf/run\r".encode())
-	line = s.readline()
-	print(line)
-	sline = line.decode().split(",")
-	if sline[0] == "a":
-		xvel = float(sline[1])
-		yvel = float(sline[2])
-		print(str(xvel) + " , " + str(yvel))
+
+	char = s.read(4)
+	print(char.decode())
+	if len(char) == 4:
+		veln = int(char)
+		
+		for i in range(0, veln):
+			line = s.readline()
+			print(line)
+			sline = line.decode().split(",")
+			if sline[0] == "a":
+				xvel = float(sline[1])
+				yvel = float(sline[2])
+				print(str(xvel) + " , " + str(yvel))
 	
 	time.sleep(1)
