@@ -11,7 +11,8 @@ def on_connect(self, mosq, obj, rc):
 
 
 def on_message(mosq, obj, msg):
-	print("Velocity: " + str(msg.payload) + "\n")
+	vel = str(msg.payload)
+	print("Velocity: " + vel[2:len(vel)-2] + "\n")
 
 
 def on_subscribe(mosq, obj, mid, granted_qos):
